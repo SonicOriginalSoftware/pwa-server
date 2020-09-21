@@ -4,10 +4,12 @@ import {
   constants as http2Constants,
 } from "http2"
 import { readFileSync } from "fs"
+import { join } from "path"
 import { lookup } from "dns"
 import { hostname } from "os"
 
-import config from "./server-config.json"
+import { config } from "./server-config.js"
+import { readFile } from "fs/promises"
 
 /** @param {import('http2').IncomingHttpHeaders} headers */
 function generate_request(headers) {
@@ -101,7 +103,7 @@ async function extract_payload(stream) {
  * @param {import('http2').ServerHttp2Stream} stream
  * @param {String} resource_path
  */
-function respond(stream, resource_path) {
+async function respond(stream, resource_path) {
   resource_path = `${config.serve_directory}${resource_path}`
 
   const response_headers = {
@@ -116,7 +118,7 @@ function respond(stream, resource_path) {
   /** @type {String | Buffer} */
   let content = "<html><body>File not found!</body></html>"
   try {
-    content = readFileSync(resource_path)
+    content = await readFile(resource_path)
   } catch (ex) {
     response_headers[http2Constants.HTTP2_HEADER_STATUS] =
       http2Constants.HTTP_STATUS_NOT_FOUND
@@ -149,7 +151,7 @@ async function on_stream(stream, headers) {
     console.log(`Request payload: ${request.payload}`)
   }
 
-  respond(stream, request.resource_path)
+  await respond(stream, request.resource_path)
   if (push_promise !== null) await push_promise
 }
 
@@ -158,8 +160,8 @@ async function main() {
   let server = null
   if (config.protocol === "https") {
     server = createSecureServer({
-      cert: readFileSync("./.security/cert.pem"),
-      key: readFileSync("./.security/key.pem"),
+      cert: await readFile(join(config.security_directory, "cert.pem")),
+      key: await readFile(join(config.security_directory, "key.pem")),
     })
   } else {
     server = createServer()
