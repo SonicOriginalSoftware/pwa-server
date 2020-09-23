@@ -3,7 +3,6 @@ import {
   createSecureServer,
   constants as http2Constants,
 } from "http2"
-import { readFileSync } from "fs"
 import { join } from "path"
 import { lookup } from "dns"
 import { hostname } from "os"
